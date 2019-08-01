@@ -34,19 +34,19 @@ app = Flask(__name__)
 def welcome():
     return (
         f"Hawaii Climate Analysis:<br/>"
-        f"/api/v1.0/precipitation<br/>"
-        f"/api/v1.0/stations<br/>"
-        f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/start<br/>"
-        f"/api/v1.0/start/end<br/>")
+        f"/api/v1.0/precipitation returns last year precipitations from all stations<br/>"
+        f"/api/v1.0/stations returns list of stations<br/>"
+        f"/api/v1.0/tobs returns last year temperatures from all stations<br/>"
+        f"/api/v1.0/start when date is given in the format of YYYY-MM-DD, returns MIN/AVG/MAX temperature for the days from start date to a set end date<br/>"
+        f"/api/v1.0/start/end when dates are given in the format of YYYY-MM-DD, returns MIN/AVG/MAX temperature for the days in between<br/>")
 
 # Precipitation API
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     year_ago = dt.date(2017, 8, 23) - dt.timedelta(days=365)
-    precip_query = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date >= year_ago).all()
+    prcp_query = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date >= year_ago).all()
 
-    precip = {date: prcp for date, prcp in precip_query}
+    precip = {date: prcp for date, prcp in prcp_query}
 
     return jsonify(precip)
 
@@ -72,23 +72,31 @@ def temp_obs():
 
 # Start date API
 @app.route("/api/v1.0/<start>")
-def temp_start(start):
-    query = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-    filter(Measurement.date >= start).all()
-
-    temp = list(np.ravel(query))
-
-    return jsonify(temp)
+def trip1(start): 
+    start_date= dt.datetime.strptime(start, '%Y-%m-%d')
+    one_year = dt.timedelta(days=365)
+    start = start_date - one_year
+    end =  dt.date(2017, 8, 23)
+    trip_data = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start).\
+        filter(Measurement.date <= end).all()
+    trip = list(np.ravel(trip_data))
+    return jsonify(trip)
 
 # Start/End date API
 @app.route("/api/v1.0/<start>/<end>")
-def date_range(start, end):
-    query = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-    filter(Measurement.date >= start).filter(Measurement.date <= end).all()
+def trip2(start,end):
+    start_date= dt.datetime.strptime(start, '%Y-%m-%d')
+    end_date= dt.datetime.strptime(end,'%Y-%m-%d')
+    one_year = dt.timedelta(days=365)
+    start = start_date - one_year
+    end = end_date - one_year
+    trip_data = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start).\
+        filter(Measurement.date <= end).all()
+    trip = list(np.ravel(trip_data))
+    return jsonify(trip)
 
-    temp =list(np.ravel(query))
-
-    return jsonify(temp)
 
 if __name__ == "__main__":
     app.run(debug=True)
